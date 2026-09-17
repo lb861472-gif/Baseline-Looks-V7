@@ -1,0 +1,93 @@
+workflows:
+  ios-unsigned:
+    name: Baseline iOS Unsigned IPA
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+
+    environment:
+      node: v22.11.0
+      xcode: latest
+
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm ci
+
+      - name: Sync Capacitor iOS
+        script: |
+          npx cap sync ios
+
+      - name: Resolve Swift Package dependencies
+        script: |
+          cd "$CM_BUILD_DIR/ios/App"
+          xcodebuild \
+            -resolvePackageDependencies \
+            -project "App.xcodeproj"
+
+      - name: Inspect Xcode project and select scheme or target
+        script: |
+          cd "$CM_BUILD_DIR/ios/App"
+
+          echo "Available Xcode schemes:"
+          xcodebuild -list -project "App.xcodeproj" || true
+
+          SCHEMES="$(
+            xcodebuild -list -project "App.xcodeproj" 2>/dev/null |
+              awk '
+                /Schemes:/ { in_schemes=1; next }
+                in_schemes && NF == 0 { in_schemes=0 }
+                in_schemes { print $1 }
+              '
+          )"
+
+          if printf '%s\n' "$SCHEMES" | grep -Fxq "App"; then
+            echo "Scheme 'App' found; building with -scheme App."
+            export XCODE_BUILD_SELECTOR="-scheme App"
+          else
+            echo "Scheme 'App' is not available in this clean checkout."
+            echo "Falling back to native target 'App'."
+            export XCODE_BUILD_SELECTOR="-target App"
+          fi
+
+          printf '%s\n' "$XCODE_BUILD_SELECTOR" > "$CM_BUILD_DIR/.xcode_build_selector"
+
+      - name: Build unsigned iOS app
+        script: |
+          cd "$CM_BUILD_DIR/ios/App"
+
+          XCODE_BUILD_SELECTOR="$(cat "$CM_BUILD_DIR/.xcode_build_selector")"
+
+          rm -rf Build Payload unsigned.ipa
+          mkdir -p Payload
+
+          xcodebuild \
+            $XCODE_BUILD_SELECTOR \
+            -project "App.xcodeproj" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath "Build" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_ENTITLEMENTS=""
+
+          test -d "Build/Build/Products/Release-iphoneos/App.app"
+
+      - name: Package unsigned IPA
+        script: |
+          cd "$CM_BUILD_DIR/ios/App"
+
+          rm -rf Payload unsigned.ipa
+          mkdir -p Payload
+          cp -R "Build/Build/Products/Release-iphoneos/App.app" "Payload/App.app"
+
+          /usr/bin/zip -qry "unsigned.ipa" "Payload"
+
+          test -f "unsigned.ipa"
+          echo "Created: $CM_BUILD_DIR/ios/App/unsigned.ipa"
+
+    artifacts:
+      - ios/App/unsigned.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM

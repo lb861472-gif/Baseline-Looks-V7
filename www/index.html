@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#08080a">
+  <title>Baseline</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            base: '#08080a',
+            panel: '#111114',
+            line: '#26262b',
+            bluebase: '#3b82f6'
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin:0; min-height:100%; background:#08080a; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, system-ui, sans-serif;
+      overflow-x:hidden;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    button, input, select { font: inherit; }
+    input, select { font-size:16px; } /* prevents iOS zoom */
+    .safe-top { padding-top: max(12px, env(safe-area-inset-top)); }
+    .safe-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+    .app-shell { min-height:100dvh; }
+    .glass { background:rgba(17,17,20,.86); backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px); }
+    .fade-in { animation: fadeIn .35s cubic-bezier(.16,1,.3,1) both; }
+    .fade-up { animation: fadeUp .5s cubic-bezier(.16,1,.3,1) both; }
+    .hello-in { animation: helloIn .45s ease-out both; }
+    .hello-out { animation: helloOut .55s ease-in both; }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes helloIn { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:scale(1)} }
+    @keyframes helloOut { from{opacity:1} to{opacity:0;transform:scale(1.02)} }
+    .hide-scroll::-webkit-scrollbar { display:none; }
+    .hide-scroll { scrollbar-width:none; }
+    .markdown h1,.markdown h2,.markdown h3 { font-weight:800; color:#fafafa; margin:1rem 0 .5rem; }
+    .markdown h2 { font-size:1rem; }
+    .markdown h3 { font-size:.9rem; }
+    .markdown p { margin:.45rem 0; }
+    .markdown ul { padding-left:1.1rem; list-style:disc; }
+    .markdown li { margin:.25rem 0; }
+    .markdown strong { color:#fff; }
+    .task-done { text-decoration:line-through; opacity:.48; }
+    .modal-bg { background:rgba(0,0,0,.78); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); }
+    .focus-ring:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.14); }
+  </style>
+</head>
+<body class="bg-base text-zinc-100">
+<div id="app" class="app-shell">
+
+  <!-- AUTH -->
+  <section id="view-auth" class="min-h-[100dvh] flex items-center justify-center px-5 py-10 safe-top safe-bottom">
+    <div class="w-full max-w-md fade-up">
+      <div class="text-center mb-8">
+        <img src="assets/baseline-logo.png" alt="Baseline" class="w-24 h-24 rounded-[26px] mx-auto shadow-2xl shadow-black/40">
+        <h1 class="mt-5 text-3xl font-black tracking-tight">Baseline</h1>
+        <p class="mt-2 text-sm text-zinc-400">Your starting point. Your routine.</p>
+      </div>
+
+      <div class="bg-panel border border-line rounded-3xl p-5 shadow-2xl">
+        <div class="flex bg-zinc-900 rounded-2xl p-1 mb-5">
+          <button id="authCreateTab" onclick="setAuthMode('create')" class="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-zinc-700 text-white">Create account</button>
+          <button id="authLoginTab" onclick="setAuthMode('login')" class="flex-1 py-2.5 rounded-xl text-sm font-semibold text-zinc-500">Log in</button>
+        </div>
+
+        <div id="createFields" class="space-y-3">
+          <label class="block">
+            <span class="block text-xs font-semibold text-zinc-300 mb-2">Your name</span>
+            <input id="nameInput" autocomplete="name" maxlength="60" placeholder="First name" class="w-full bg-zinc-900 border border-line rounded-2xl px-4 py-3.5 text-white placeholder:text-zinc-600 focus-ring">
+          </label>
+        </div>
+
+        <label class="block mt-3">
+          <span class="block text-xs font-semibold text-zinc-300 mb-2">Email</span>
+          <input id="emailInput" type="email" autocomplete="email" placeholder="you@example.com" class="w-full bg-zinc-900 border border-line rounded-2xl px-4 py-3.5 text-white placeholder:text-zinc-600 focus-ring">
+        </label>
+
+        <button id="sendCodeButton" onclick="sendEmailCode()" class="w-full mt-4 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 font-bold text-sm shadow-lg shadow-blue-600/20">
+          Email me a verification code
+        </button>
+        <p id="authError" class="hidden mt-3 text-xs text-red-400 leading-relaxed"></p>
+        <p class="mt-4 text-[11px] text-zinc-600 leading-relaxed text-center">
+          We use your email to protect your account and restore your saved Baseline plan. Your photos are not stored in the database by this app.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- OTP -->
+  <section id="view-otp" class="hidden min-h-[100dvh] flex items-center justify-center px-5 py-10 safe-top safe-bottom">
+    <div class="w-full max-w-md fade-up">
+      <button onclick="backToAuth()" class="text-zinc-500 hover:text-zinc-200 text-sm mb-6"><i class="fa-solid fa-arrow-left mr-2"></i>Back</button>
+      <div class="bg-panel border border-line rounded-3xl p-6 shadow-2xl text-center">
+        <div class="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto">
+          <i class="fa-solid fa-envelope text-lg"></i>
+        </div>
+        <h2 class="mt-5 text-2xl font-black">Check your email</h2>
+        <p class="mt-2 text-sm text-zinc-400">We sent a 6-digit code to</p>
+        <p id="otpEmail" class="mt-1 text-sm font-semibold text-zinc-200 break-all"></p>
+
+        <input id="otpInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000"
+          class="w-full mt-6 bg-zinc-900 border border-line rounded-2xl px-4 py-4 text-center text-2xl tracking-[.45em] font-bold focus-ring">
+
+        <button onclick="verifyEmailCode()" class="w-full mt-4 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 font-bold text-sm">
+          Verify & continue
+        </button>
+        <button onclick="sendEmailCode(true)" class="mt-4 text-xs font-semibold text-zinc-500 hover:text-zinc-200">Send a new code</button>
+        <p id="otpError" class="hidden mt-3 text-xs text-red-400"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- GREETING -->
+  <section id="view-greeting" class="hidden fixed inset-0 z-[100] bg-base items-center justify-center">
+    <div class="text-center hello-in">
+      <img src="assets/baseline-logo.png" class="w-24 h-24 rounded-[26px] mx-auto shadow-2xl" alt="">
+      <p class="mt-7 text-sm text-zinc-500 uppercase tracking-[.3em]">Baseline</p>
+      <h2 id="helloName" class="mt-3 text-4xl sm:text-5xl font-black tracking-tight">Hello</h2>
+    </div>
+  </section>
+
+  <!-- MAIN APP -->
+  <section id="view-app" class="hidden min-h-[100dvh]">
+    <header class="glass sticky top-0 z-50 border-b border-line safe-top">
+      <div class="max-w-2xl mx-auto px-4 pt-3 pb-3 flex items-center justify-between">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <img src="assets/baseline-logo.png" class="w-9 h-9 rounded-xl shrink-0" alt="Baseline">
+          <div class="min-w-0">
+            <div class="font-black text-sm leading-tight">Baseline</div>
+            <div id="headerSubtitle" class="text-[10px] text-zinc-500 truncate">Personal protocol</div>
+          </div>
+        </div>
+        <button onclick="openAccount()" class="w-10 h-10 rounded-xl bg-zinc-900 border border-line flex items-center justify-center text-zinc-300">
+          <span id="avatarLetter" class="font-bold text-sm">B</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4 pt-5 pb-28">
+      <!-- HOME -->
+      <div id="tab-home" class="fade-in">
+        <div class="mb-5">
+          <p class="text-sm text-zinc-500">Today</p>
+          <h1 class="mt-1 text-3xl font-black tracking-tight">Hello, <span id="dashboardName">there</span>.</h1>
+          <p class="mt-1 text-sm text-zinc-400">A few consistent actions beat a perfect plan.</p>
+        </div>
+
+        <div id="progressCard" class="bg-gradient-to-br from-blue-600/20 to-panel border border-blue-500/20 rounded-3xl p-5 mb-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-widest text-blue-300">Today's progress</p>
+              <p id="progressText" class="mt-2 text-2xl font-black">0%</p>
+            </div>
+            <div class="w-14 h-14 rounded-full border-4 border-blue-500/20 flex items-center justify-center">
+              <i class="fa-solid fa-check text-blue-400"></i>
+            </div>
+          </div>
+          <div class="mt-4 h-2 bg-zinc-900 rounded-full overflow-hidden">
+            <div id="progressBar" class="h-full bg-blue-500 rounded-full transition-all duration-500" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div id="noPlanCard" class="hidden bg-panel border border-line rounded-3xl p-5">
+          <div class="w-11 h-11 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center"><i class="fa-solid fa-sparkles"></i></div>
+          <h2 class="mt-4 text-xl font-black">Build your Baseline</h2>
+          <p class="mt-2 text-sm text-zinc-400 leading-relaxed">Take your first assessment and Baseline will build a personalized routine around your goals.</p>
+          <button onclick="startIntake()" class="mt-5 w-full py-3.5 rounded-2xl bg-blue-600 font-bold text-sm">Start assessment</button>
+        </div>
+
+        <div id="taskCard" class="hidden bg-panel border border-line rounded-3xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-bold">Today's routine</h2>
+            <button onclick="openPlan()" class="text-xs font-semibold text-blue-400">View plan</button>
+          </div>
+          <div id="todayTasks" class="space-y-2"></div>
+        </div>
+
+        <div id="quickCards" class="hidden grid grid-cols-2 gap-3 mt-3">
+          <button onclick="openPlan()" class="text-left bg-panel border border-line rounded-2xl p-4">
+            <i class="fa-solid fa-list-check text-blue-400"></i>
+            <p class="mt-3 text-sm font-bold">My plan</p>
+            <p class="mt-1 text-[11px] text-zinc-500">See your full routine</p>
+          </button>
+          <button onclick="openProgress()" class="text-left bg-panel border border-line rounded-2xl p-4">
+            <i class="fa-solid fa-chart-line text-blue-400"></i>
+            <p class="mt-3 text-sm font-bold">Progress</p>
+            <p class="mt-1 text-[11px] text-zinc-500">Keep your streak moving</p>
+          </button>
+        </div>
+      </div>
+
+      <!-- PLAN -->
+      <div id="tab-plan" class="hidden fade-in">
+        <div class="flex items-end justify-between mb-5">
+          <div>
+            <p class="text-sm text-zinc-500">Your personalized plan</p>
+            <h1 class="mt-1 text-3xl font-black">My Plan</h1>
+          </div>
+          <button onclick="startIntake()" class="text-xs font-bold text-blue-400">Reassess</button>
+        </div>
+        <div id="planTraits" class="flex flex-wrap gap-2 mb-4"></div>
+        <div id="planOutput" class="markdown bg-panel border border-line rounded-3xl p-5 text-sm text-zinc-300 leading-relaxed"></div>
+      </div>
+
+      <!-- PROGRESS -->
+      <div id="tab-progress" class="hidden fade-in">
+        <p class="text-sm text-zinc-500">Consistency over perfection</p>
+        <h1 class="mt-1 text-3xl font-black">Progress</h1>
+        <div class="mt-5 bg-panel border border-line rounded-3xl p-5">
+          <p class="text-xs uppercase tracking-widest font-bold text-zinc-500">Current completion</p>
+          <p id="progressLarge" class="mt-2 text-5xl font-black">0%</p>
+          <p id="progressDetail" class="mt-2 text-sm text-zinc-400">Complete today's tasks to build momentum.</p>
+        </div>
+        <div class="mt-3 bg-panel border border-line rounded-3xl p-5">
+          <p class="font-bold">Today</p>
+          <div id="progressTasks" class="mt-4 space-y-2"></div>
+        </div>
+      </div>
+
+      <!-- ACCOUNT -->
+      <div id="tab-account" class="hidden fade-in">
+        <p class="text-sm text-zinc-500">Your account</p>
+        <h1 class="mt-1 text-3xl font-black">Account</h1>
+        <div class="mt-5 bg-panel border border-line rounded-3xl p-5">
+          <div class="flex items-center gap-4">
+            <img src="assets/baseline-logo.png" class="w-16 h-16 rounded-2xl" alt="">
+            <div class="min-w-0">
+              <p id="accountName" class="font-black text-lg truncate">—</p>
+              <p id="accountEmail" class="text-xs text-zinc-500 truncate">—</p>
+            </div>
+          </div>
+          <div class="mt-5 pt-5 border-t border-line space-y-3">
+            <button onclick="startIntake()" class="w-full text-left py-3.5 px-4 rounded-2xl bg-zinc-900 border border-line text-sm font-semibold"><i class="fa-solid fa-camera mr-3 text-blue-400"></i>Update assessment</button>
+            <button onclick="signOut()" class="w-full text-left py-3.5 px-4 rounded-2xl bg-red-950/20 border border-red-900/40 text-sm font-semibold text-red-300"><i class="fa-solid fa-arrow-right-from-bracket mr-3"></i>Log out</button>
+          </div>
+        </div>
+        <p class="mt-4 text-[11px] text-zinc-600 leading-relaxed">Baseline saves your name and personalized plan to your account. Photos are sent to the configured AI service for the assessment but are not saved to the Baseline database.</p>
+      </div>
+    </main>
+
+    <!-- Bottom nav -->
+    <nav class="glass fixed bottom-0 left-0 right-0 z-50 border-t border-line safe-bottom">
+      <div class="max-w-2xl mx-auto grid grid-cols-4 px-2 pt-2">
+        <button onclick="showTab('home')" id="nav-home" class="py-2.5 text-blue-400">
+          <i class="fa-solid fa-house text-sm"></i><span class="block text-[10px] font-semibold mt-1">Home</span>
+        </button>
+        <button onclick="showTab('plan')" id="nav-plan" class="py-2.5 text-zinc-600">
+          <i class="fa-solid fa-list-check text-sm"></i><span class="block text-[10px] font-semibold mt-1">Plan</span>
+        </button>
+        <button onclick="showTab('progress')" id="nav-progress" class="py-2.5 text-zinc-600">
+          <i class="fa-solid fa-chart-line text-sm"></i><span class="block text-[10px] font-semibold mt-1">Progress</span>
+        </button>
+        <button onclick="showTab('account')" id="nav-account" class="py-2.5 text-zinc-600">
+          <i class="fa-solid fa-user text-sm"></i><span class="block text-[10px] font-semibold mt-1">Account</span>
+        </button>
+      </div>
+    </nav>
+  </section>
+
+  <!-- INTAKE MODAL / FULL SCREEN -->
+  <section id="view-intake" class="hidden fixed inset-0 z-[80] bg-base overflow-y-auto safe-top safe-bottom">
+    <div class="max-w-2xl mx-auto px-4 py-5 pb-12">
+      <div class="flex items-center justify-between mb-6">
+        <button onclick="closeIntake()" class="w-10 h-10 rounded-xl bg-zinc-900 border border-line text-zinc-400"><i class="fa-solid fa-xmark"></i></button>
+        <p class="text-[11px] font-bold uppercase tracking-widest text-zinc-500">Baseline assessment</p>
+        <span class="w-10"></span>
+      </div>
+
+      <div id="intakeStep1" class="space-y-5 fade-up">
+        <p class="text-xs font-bold uppercase tracking-widest text-blue-400">01 / 03</p>
+        <h1 class="text-3xl font-black">Face & skin</h1>
+        <p class="text-sm text-zinc-400 leading-relaxed">Add a clear front-facing photo. Baseline uses descriptive observations rather than attractiveness scores or diagnoses.</p>
+        <label class="block bg-panel border-2 border-dashed border-line rounded-3xl p-6 text-center cursor-pointer">
+          <input id="facePhoto" type="file" accept="image/*" capture="user" class="hidden" onchange="handleImageUpload(event,'face')">
+          <img id="facePreview" class="hidden w-full max-h-72 object-contain rounded-2xl mb-4" alt="Face preview">
+          <div id="facePlaceholder">
+            <div class="w-14 h-14 rounded-2xl bg-zinc-900 border border-line flex items-center justify-center mx-auto text-zinc-500"><i class="fa-solid fa-camera"></i></div>
+            <p class="mt-3 font-semibold text-sm">Take or choose a photo</p>
+            <p class="mt-1 text-xs text-zinc-500">Clear lighting works best</p>
+          </div>
+        </label>
+        <div class="flex gap-3">
+          <button onclick="skipFace()" class="flex-1 py-3.5 rounded-2xl bg-zinc-900 border border-line text-sm font-semibold">Skip</button>
+          <button onclick="nextIntake(2)" class="flex-1 py-3.5 rounded-2xl bg-blue-600 text-sm font-bold">Continue</button>
+        </div>
+      </div>
+
+      <div id="intakeStep2" class="hidden space-y-5 fade-up">
+        <p class="text-xs font-bold uppercase tracking-widest text-blue-400">02 / 03</p>
+        <h1 class="text-3xl font-black">Posture</h1>
+        <p class="text-sm text-zinc-400 leading-relaxed">Add a standing side or back photo so Baseline can describe visible alignment patterns.</p>
+        <label class="block bg-panel border-2 border-dashed border-line rounded-3xl p-6 text-center cursor-pointer">
+          <input id="bodyPhoto" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleImageUpload(event,'body')">
+          <img id="bodyPreview" class="hidden w-full max-h-72 object-contain rounded-2xl mb-4" alt="Posture preview">
+          <div id="bodyPlaceholder">
+            <div class="w-14 h-14 rounded-2xl bg-zinc-900 border border-line flex items-center justify-center mx-auto text-zinc-500"><i class="fa-solid fa-person"></i></div>
+            <p class="mt-3 font-semibold text-sm">Take or choose a standing photo</p>
+            <p class="mt-1 text-xs text-zinc-500">A full-body side view is useful</p>
+          </div>
+        </label>
+        <div class="flex gap-3">
+          <button onclick="skipBody()" class="flex-1 py-3.5 rounded-2xl bg-zinc-900 border border-line text-sm font-semibold">Skip</button>
+          <button onclick="nextIntake(3)" class="flex-1 py-3.5 rounded-2xl bg-blue-600 text-sm font-bold">Continue</button>
+        </div>
+      </div>
+
+      <div id="intakeStep3" class="hidden space-y-5 fade-up">
+        <p class="text-xs font-bold uppercase tracking-widest text-blue-400">03 / 03</p>
+        <h1 class="text-3xl font-black">Build your routine</h1>
+        <p class="text-sm text-zinc-400 leading-relaxed">Choose the direction and time you can realistically commit to.</p>
+        <div class="bg-panel border border-line rounded-3xl p-5 space-y-4">
+          <label class="block">
+            <span class="block text-xs font-semibold text-zinc-300 mb-2">Primary focus</span>
+            <select id="intakeGoal" class="w-full bg-zinc-900 border border-line rounded-2xl px-4 py-3.5 text-zinc-200 focus-ring">
+              <option>Comprehensive skincare, training, posture & habits</option>
+              <option>Skincare & grooming</option>
+              <option>Strength & fitness</option>
+              <option>Posture & movement</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="block text-xs font-semibold text-zinc-300 mb-2">Equipment</span>
+            <select id="intakeEquipment" class="w-full bg-zinc-900 border border-line rounded-2xl px-4 py-3.5 text-zinc-200 focus-ring">
+              <option>Full gym</option>
+              <option>Home: bands + bodyweight</option>
+              <option>Bodyweight only</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="block text-xs font-semibold text-zinc-300 mb-2">Training days</span>
+            <select id="intakeDays" class="w-full bg-zinc-900 border border-line rounded-2xl px-4 py-3.5 text-zinc-200 focus-ring">
+              <option>3 days/week</option>
+              <option>4 days/week</option>
+              <option>5 days/week</option>
+            </select>
+          </label>
+        </div>
+        <button id="generateButton" onclick="generateBaseline()" class="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-500 font-bold shadow-lg shadow-blue-600/20">
+          Build my Baseline
+        </button>
+        <p class="text-[11px] text-zinc-600 text-center">This is wellness guidance, not a medical diagnosis or treatment.</p>
+      </div>
+
+      <div id="intakeLoading" class="hidden py-20 text-center">
+        <div class="w-14 h-14 mx-auto rounded-full border-4 border-blue-500/20 border-t-blue-500 animate-spin"></div>
+        <h2 class="mt-6 text-xl font-black">Building your plan</h2>
+        <p id="loadingMessage" class="mt-2 text-sm text-zinc-500">Analyzing your starting point...</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACCOUNT CONFIG ERROR -->
+  <div id="configWarning" class="hidden fixed inset-0 z-[200] bg-black/90 items-center justify-center p-5">
+    <div class="max-w-md bg-panel border border-line rounded-3xl p-6">
+      <img src="assets/baseline-logo.png" class="w-16 h-16 rounded-2xl" alt="">
+      <h2 class="mt-5 text-xl font-black">One-time backend setup required</h2>
+      <p class="mt-2 text-sm text-zinc-400 leading-relaxed">This build needs the Baseline Supabase project URL and publishable key before accounts and saved plans can work.</p>
+      <p class="mt-4 text-xs text-zinc-500">Add them to <code class="text-zinc-300">www/config.js</code>, then rebuild.</p>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden fixed left-4 right-4 bottom-24 z-[150] max-w-xl mx-auto bg-zinc-900 border border-line rounded-2xl px-4 py-3 text-sm shadow-2xl"></div>
+</div>
+
+<script>
+  const cfg = window.BASELINE_CONFIG || {};
+  const isConfigured = cfg.SUPABASE_URL && !cfg.SUPABASE_URL.includes('YOUR_') &&
+                       cfg.SUPABASE_PUBLISHABLE_KEY && !cfg.SUPABASE_PUBLISHABLE_KEY.includes('YOUR_');
+
+  let supabaseClient = null;
+  if (isConfigured) {
+    supabaseClient = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_PUBLISHABLE_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+  }
+
+  const state = {
+    authMode: 'create',
+    pendingEmail: '',
+    pendingName: '',
+    user: null,
+    profile: null,
+    plan: null,
+    faceImage: null,
+    bodyImage: null,
+    currentTab: 'home'
+  };
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!isConfigured) {
+      document.getElementById('configWarning').classList.remove('hidden');
+      document.getElementById('configWarning').classList.add('flex');
+      return;
+    }
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      if (session?.user && !state.user) {
+        state.user = session.user;
+        loadAccount().catch(err => console.error(err));
+      }
+    });
+    const { data } = await supabaseClient.auth.getSession();
+    if (data.session) {
+      state.user = data.session.user;
+      await loadAccount();
+    } else {
+      showOnly('view-auth');
+    }
+  });
+
+  function showOnly(id) {
+    ['view-auth','view-otp','view-app','view-intake'].forEach(x => {
+      document.getElementById(x).classList.toggle('hidden', x !== id);
+    });
+  }
+
+  function setAuthMode(mode) {
+    state.authMode = mode;
+    document.getElementById('createFields').classList.toggle('hidden', mode !== 'create');
+    document.getElementById('authCreateTab').className = mode === 'create'
+      ? 'flex-1 py-2.5 rounded-xl text-sm font-semibold bg-zinc-700 text-white'
+      : 'flex-1 py-2.5 rounded-xl text-sm font-semibold text-zinc-500';
+    document.getElementById('authLoginTab').className = mode === 'login'
+      ? 'flex-1 py-2.5 rounded-xl text-sm font-semibold bg-zinc-700 text-white'
+      : 'flex-1 py-2.5 rounded-xl text-sm font-semibold text-zinc-500';
+    clearAuthError();
+  }
+
+  function clearAuthError() {
+    const el = document.getElementById('authError');
+    el.classList.add('hidden'); el.textContent = '';
+  }
+
+  function showAuthError(message) {
+    const el = document.getElementById('authError');
+    el.textContent = message; el.classList.remove('hidden');
+  }
+
+  async function sendEmailCode(resend = false) {
+    if (!supabaseClient) return;
+    clearAuthError();
+    const email = document.getElementById('emailInput').value.trim().toLowerCase();
+    const name = document.getElementById('nameInput').value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showAuthError('Enter a valid email address.');
+      return;
+    }
+    if (state.authMode === 'create' && !name) {
+      showAuthError('Enter your name first.');
+      return;
+    }
+    state.pendingEmail = email;
+    state.pendingName = name;
+    const button = document.getElementById('sendCodeButton');
+    button.disabled = true; button.textContent = 'Sending code...';
+    const { error } = await supabaseClient.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: state.authMode === 'create'
+      }
+    });
+    button.disabled = false; button.textContent = 'Email me a verification code';
+    if (error) {
+      showAuthError(error.message);
+      return;
+    }
+    document.getElementById('otpEmail').textContent = email;
+    document.getElementById('otpError').classList.add('hidden');
+    document.getElementById('otpInput').value = '';
+    showOnly('view-otp');
+    setTimeout(() => document.getElementById('otpInput').focus(), 100);
+  }
+
+  function backToAuth() {
+    showOnly('view-auth');
+  }
+
+  async function verifyEmailCode() {
+    const token = document.getElementById('otpInput').value.trim();
+    const errEl = document.getElementById('otpError');
+    errEl.classList.add('hidden');
+    if (!/^\d{6}$/.test(token)) {
+      errEl.textContent = 'Enter the 6-digit code from your email.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    const { data, error } = await supabaseClient.auth.verifyOtp({
+      email: state.pendingEmail,
+      token,
+      type: 'email'
+    });
+    if (error) {
+      errEl.textContent = error.message;
+      errEl.classList.remove('hidden');
+      return;
+    }
+    state.user = data.user;
+    await loadAccount(true);
+  }
+
+  async function loadAccount(showGreeting = false) {
+    if (!state.user) return;
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles').select('id,name,email').eq('id', state.user.id).maybeSingle();
+
+    if (profileError) {
+      console.error(profileError);
+      toast('Could not load your profile. Check the Supabase database setup.');
+      return;
+    }
+
+    if (!profile) {
+      const name = (state.pendingName || state.user.user_metadata?.name || '').trim();
+      if (!name) {
+        setAuthMode('create');
+        document.getElementById('emailInput').value = state.user.email || '';
+        showOnly('view-auth');
+        showAuthError('Please finish your account by entering your name.');
+        return;
+      }
+      const { data: created, error } = await supabaseClient.from('profiles').upsert({
+        id: state.user.id, name, email: state.user.email
+      }).select('id,name,email').single();
+      if (error) {
+        toast('Could not save your account: ' + error.message);
+        return;
+      }
+      state.profile = created;
+    } else {
+      state.profile = profile;
+    }
+
+    const { data: plan, error: planError } = await supabaseClient
+      .from('plans').select('id,plan_json,updated_at').eq('user_id', state.user.id).maybeSingle();
+    if (planError) console.error(planError);
+    state.plan = plan?.plan_json || null;
+
+    updateAccountUI();
+    if (showGreeting) {
+      await greetThenEnter();
+    } else {
+      showOnly('view-app');
+      renderDashboard();
+    }
+  }
+
+  async function greetThenEnter() {
+    showOnly('view-greeting');
+    const greeting = document.getElementById('view-greeting');
+    greeting.classList.remove('hidden');
+    greeting.classList.add('flex');
+    document.getElementById('helloName').textContent = 'Hello, ' + (state.profile?.name || 'there');
+    await new Promise(r => setTimeout(r, 1450));
+    greeting.querySelector('div').classList.remove('hello-in');
+    greeting.querySelector('div').classList.add('hello-out');
+    await new Promise(r => setTimeout(r, 500));
+    greeting.classList.add('hidden');
+    greeting.classList.remove('flex');
+    showOnly('view-app');
+    renderDashboard();
+  }
+
+  function updateAccountUI() {
+    const name = state.profile?.name || 'there';
+    document.getElementById('dashboardName').textContent = name.split(' ')[0];
+    document.getElementById('accountName').textContent = name;
+    document.getElementById('accountEmail').textContent = state.profile?.email || state.user?.email || '';
+    document.getElementById('avatarLetter').textContent = name.charAt(0).toUpperCase();
+  }
+
+  function renderDashboard() {
+    const hasPlan = !!state.plan;
+    document.getElementById('noPlanCard').classList.toggle('hidden', hasPlan);
+    document.getElementById('taskCard').classList.toggle('hidden', !hasPlan);
+    document.getElementById('quickCards').classList.toggle('hidden', !hasPlan);
+    if (hasPlan) {
+      renderPlan();
+      renderTasks();
+    }
+    showTab(state.currentTab || 'home');
+  }
+
+  function showTab(tab) {
+    state.currentTab = tab;
+    ['home','plan','progress','account'].forEach(x => {
+      document.getElementById('tab-' + x).classList.toggle('hidden', x !== tab);
+      document.getElementById('nav-' + x).className = x === tab
+        ? 'py-2.5 text-blue-400'
+        : 'py-2.5 text-zinc-600';
+    });
+    if (tab === 'progress') renderTasks();
+  }
+  function openPlan(){ showTab('plan'); }
+  function openProgress(){ showTab('progress'); }
+  function openAccount(){ showTab('account'); }
+
+  function startIntake() {
+    state.faceImage = null; state.bodyImage = null;
+    ['intakeStep1','intakeStep2','intakeStep3'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    document.getElementById('intakeLoading').classList.add('hidden');
+    document.getElementById('intakeStep1').classList.remove('hidden');
+    document.getElementById('facePreview').classList.add('hidden');
+    document.getElementById('bodyPreview').classList.add('hidden');
+    document.getElementById('facePlaceholder').classList.remove('hidden');
+    document.getElementById('bodyPlaceholder').classList.remove('hidden');
+    showOnly('view-intake');
+  }
+  function closeIntake(){ showOnly('view-app'); renderDashboard(); }
+  function nextIntake(step) {
+    [1,2,3].forEach(i => document.getElementById('intakeStep'+i).classList.add('hidden'));
+    document.getElementById('intakeStep'+step).classList.remove('hidden');
+  }
+  function skipFace(){ state.faceImage = null; nextIntake(2); }
+  function skipBody(){ state.bodyImage = null; nextIntake(3); }
+
+  function handleImageUpload(event, type) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) { toast('Please choose an image under 8 MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      if (type === 'face') {
+        state.faceImage = e.target.result;
+        document.getElementById('facePreview').src = state.faceImage;
+        document.getElementById('facePreview').classList.remove('hidden');
+        document.getElementById('facePlaceholder').classList.add('hidden');
+      } else {
+        state.bodyImage = e.target.result;
+        document.getElementById('bodyPreview').src = state.bodyImage;
+        document.getElementById('bodyPreview').classList.remove('hidden');
+        document.getElementById('bodyPlaceholder').classList.add('hidden');
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function imagePart(dataUrl) {
+    if (!dataUrl) return null;
+    const m = dataUrl.match(/^data:(image\/[^;]+);base64,(.+)$/);
+    return m ? { mime_type: m[1], data: m[2] } : null;
+  }
+
+  async function callBaselineAI(prompt, images = []) {
+    if (!supabaseClient) throw new Error('Backend is not configured.');
+    const cleanImages = images.map(imagePart).filter(Boolean);
+    const { data, error } = await supabaseClient.functions.invoke('baseline-ai', {
+      body: { prompt, images: cleanImages }
+    });
+    if (error) {
+      let message = error.message;
+      try { if (error.context) { const body = await error.context.json(); message = body.error || body.message || message; } } catch (_) {}
+      throw new Error(message);
+    }
+    if (!data?.text) throw new Error('The AI service returned an empty response.');
+    return data.text;
+  }
+
+  async function generateBaseline() {
+    const button = document.getElementById('generateButton');
+    button.disabled = true; button.textContent = 'Building...';
+    document.getElementById('intakeStep3').classList.add('hidden');
+    document.getElementById('intakeLoading').classList.remove('hidden');
+
+    const goal = document.getElementById('intakeGoal').value;
+    const equipment = document.getElementById('intakeEquipment').value;
+    const days = document.getElementById('intakeDays').value;
+
+    const prompt = `You are Baseline, a cautious wellness and self-improvement planning assistant.
+Create a practical personalized routine from the user's intake and optional face/posture photos.
+
+Safety and accuracy rules:
+- Do not diagnose diseases or medical conditions from photos.
+- Do not rate attractiveness, facial beauty, body attractiveness, or "potential".
+- Do not infer protected traits, age, identity, personality, or health conditions from appearance.
+- Use descriptive, non-judgmental observations only when useful.
+- For skin concerns, recommend gentle evidence-informed care and say when a dermatologist should be consulted.
+- For exercise, give general wellness guidance, progressive but conservative training, and advise professional assessment for pain, injury, or neurological symptoms.
+- Never recommend dangerous crash dieting, unregulated drugs, or unsafe supplements.
+- Keep the plan realistic and easy to follow.
+
+User focus: ${goal}
+Equipment: ${equipment}
+Training availability: ${days}
+
+Return STRICT JSON only:
+{
+  "traits": ["short descriptive observation", "short observation"],
+  "summary": "2-3 sentence personalized summary",
+  "morning": ["action 1", "action 2"],
+  "workout": ["exercise or routine 1", "exercise or routine 2", "exercise or routine 3"],
+  "evening": ["action 1", "action 2"],
+  "weekly": ["weekly action 1", "weekly action 2"],
+  "safety": "short safety note",
+  "routineMarkdown": "Detailed routine in Markdown with headings and concise evidence notes."
+}`;
+
+    try {
+      setLoadingMessage('Analyzing your starting point...');
+      const images = [state.faceImage, state.bodyImage].filter(Boolean);
+      const raw = await callBaselineAI(prompt, images);
+      const clean = raw.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```$/,'').trim();
+      let parsed;
+      try { parsed = JSON.parse(clean); }
+      catch (_) {
+        parsed = {
+          traits: [],
+          summary: 'Your personalized plan is ready.',
+          morning: [],
+          workout: [],
+          evening: [],
+          weekly: [],
+          safety: 'General wellness guidance only.',
+          routineMarkdown: raw
+        };
+      }
+
+      const tasks = [
+        ...(parsed.morning || []).slice(0,3).map((x,i)=>({id:'m'+i,text:x,category:'Morning',done:false})),
+        ...(parsed.workout || []).slice(0,3).map((x,i)=>({id:'w'+i,text:x,category:'Training',done:false})),
+        ...(parsed.evening || []).slice(0,3).map((x,i)=>({id:'e'+i,text:x,category:'Evening',done:false}))
+      ];
+      const plan = {
+        version: 1,
+        created_at: new Date().toISOString(),
+        focus: goal,
+        equipment,
+        days,
+        traits: parsed.traits || [],
+        summary: parsed.summary || '',
+        morning: parsed.morning || [],
+        workout: parsed.workout || [],
+        evening: parsed.evening || [],
+        weekly: parsed.weekly || [],
+        safety: parsed.safety || '',
+        routineMarkdown: parsed.routineMarkdown || '',
+        tasks
+      };
+
+      const { error } = await supabaseClient.from('plans').upsert({
+        user_id: state.user.id,
+        plan_json: plan,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+      if (error) throw new Error('Could not save your plan: ' + error.message);
+
+      state.plan = plan;
+      closeIntake();
+      showTab('home');
+      toast('Your Baseline is saved.');
+    } catch (err) {
+      console.error(err);
+      document.getElementById('intakeLoading').classList.add('hidden');
+      document.getElementById('intakeStep3').classList.remove('hidden');
+      button.disabled = false; button.textContent = 'Build my Baseline';
+      toast(err.message || 'Something went wrong.');
+    }
+  }
+
+  function setLoadingMessage(text){ document.getElementById('loadingMessage').textContent = text; }
+
+  function renderPlan() {
+    if (!state.plan) return;
+    document.getElementById('planTraits').innerHTML = (state.plan.traits || []).map(t =>
+      `<span class="px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs">${escapeHtml(t)}</span>`
+    ).join('');
+    const md = state.plan.routineMarkdown || buildMarkdownFromPlan(state.plan);
+    document.getElementById('planOutput').innerHTML = marked.parse(md);
+  }
+
+  function buildMarkdownFromPlan(p) {
+    return `## Your Baseline\n\n${p.summary || ''}\n\n### Morning\n${(p.morning||[]).map(x=>'- '+x).join('\\n')}\n\n### Training\n${(p.workout||[]).map(x=>'- '+x).join('\\n')}\n\n### Evening\n${(p.evening||[]).map(x=>'- '+x).join('\\n')}\n\n### Weekly\n${(p.weekly||[]).map(x=>'- '+x).join('\\n')}\n\n### Safety\n${p.safety || ''}`;
+  }
+
+  function renderTasks() {
+    const tasks = state.plan?.tasks || [];
+    const done = tasks.filter(t => t.done).length;
+    const pct = tasks.length ? Math.round(done / tasks.length * 100) : 0;
+    document.getElementById('progressText').textContent = pct + '%';
+    document.getElementById('progressLarge').textContent = pct + '%';
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressDetail').textContent = tasks.length
+      ? `${done} of ${tasks.length} routine actions completed today.`
+      : 'Your plan does not have daily actions yet.';
+
+    const html = tasks.map((t,i) => taskHtml(t,i)).join('');
+    document.getElementById('todayTasks').innerHTML = html || '<p class="text-sm text-zinc-500">No daily tasks yet.</p>';
+    document.getElementById('progressTasks').innerHTML = html || '<p class="text-sm text-zinc-500">No daily tasks yet.</p>';
+  }
+
+  function taskHtml(task, index) {
+    return `<button onclick="toggleTask(${index})" class="w-full flex items-center gap-3 text-left p-3 rounded-2xl bg-zinc-900/70 border border-line active:scale-[.99]">
+      <span class="w-6 h-6 rounded-full border ${task.done?'bg-blue-600 border-blue-500':'border-zinc-700'} flex items-center justify-center shrink-0">
+        ${task.done?'<i class="fa-solid fa-check text-[10px]"></i>':''}
+      </span>
+      <span class="min-w-0">
+        <span class="block text-[10px] uppercase tracking-widest text-zinc-600">${escapeHtml(task.category || 'Routine')}</span>
+        <span class="block mt-0.5 text-sm ${task.done?'task-done text-zinc-500':'text-zinc-200'}">${escapeHtml(task.text || '')}</span>
+      </span>
+    </button>`;
+  }
+
+  async function toggleTask(index) {
+    if (!state.plan?.tasks?.[index]) return;
+    state.plan.tasks[index].done = !state.plan.tasks[index].done;
+    renderTasks();
+    const { error } = await supabaseClient.from('plans').update({
+      plan_json: state.plan, updated_at: new Date().toISOString()
+    }).eq('user_id', state.user.id);
+    if (error) toast('Could not save progress: ' + error.message);
+  }
+
+  async function signOut() {
+    await supabaseClient.auth.signOut();
+    state.user = null; state.profile = null; state.plan = null;
+    showOnly('view-auth');
+    setAuthMode('login');
+    toast('Logged out.');
+  }
+
+  function toast(message) {
+    const el = document.getElementById('toast');
+    el.textContent = message;
+    el.classList.remove('hidden');
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(()=>el.classList.add('hidden'), 3200);
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  }
+</script>
+</body>
+</html>
